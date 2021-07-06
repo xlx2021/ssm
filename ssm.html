@@ -1,0 +1,133 @@
+IOC、DI
+
+       IOC：控制反转。是将原来对象的创建交给spring容器来管理。没有IOC的话，对象的创建一般通过在代码里面new一个对象这种方式；有了IOC，对象的创建或者说bean，是被spirng管理的，有自己的生命周期。
+
+       DI：依赖注入。DI是在spring创建对象的时候，动态的将依赖对象注入到对bean组件。
+
+BeanFactory、ApplicationContext
+
+       BeanFactory：是spring创建bean对象的工厂接口。调用getBean方法就能获取实例对象，与ApplicationContext不同的是采用的是延迟加载，在第一次getBean的时候才会初始化bean。
+
+       ApplicationContext：是BeanFactory的子接口，有两个子类ClassPathXmlApplicationContext和fileSystemXmlApplicationContext。加载bean是在加载applicationContext.xml这个文件的时候就去加载，并且扩展了beanFactory，增加了事务传播等功能。
+
+Spring容器启动的两种方式
+
+    在tomcat等servlet容器的web.xml中监听容器启动。一般是在web.xml中配置contextLoaderListener。
+    自创建ApplicationConext。一般是new classPathXmlApplicationContext。
+
+Spring配置bean实例化的方式
+
+    1.使用类构造器实例化。最常用的方式。
+    2.使用静态工厂方法实例化。
+
+<bean id="bean2" class="cn.itcast.spring.b_instance.Bean2Factory" factory-method="getBean2"></bean></br>
+
+    使用实例工厂方法实例化。
+
+<bean id="bean3Factory" class="cn.itcast.spring.b_instance.Bean3Factory"></bean>
+
+<bean id="bean3" factory-bean="bean3Factory" factory-method="getBean3"></bean>
+
+Spring bean的生命周期
+
+    容器启动，会对scope为单例的bean进行初始化。如果不是单例的bean，那么不会加载，会在用到的时候再加载。
+    按照bean的定义，注入bean的属性，调用属性的set方法。
+    如果bean实现了beanNameAware接口，会调用该接口的setBeanName方法，传入参数为该bean的id，此时bean就获得了在容器内的id。
+    如果bean实现了beanFactoryAware接口，会调用该接口的setBeanFactory方法，传入参数是beanFactory。可以通过beanFactory获取所有的bean。
+    如果bean实现了applicationContextAware接口，会调用setApplicationContext方法，传入参数是applicationContext。
+    如果配置了beanPostProcesser接口的实现类，那么就会调用beanPostProcesser的processBeforeInitialization方法。
+    如果bean实现了InitializingBean接口，会调用该接口的afterPropertiesSet方法。
+    如果bean配置了init-method，会调用该方法。
+    如果bean实现了beanPostProcesser接口，那么就会调用beanPostProcesser的postProcessAfterInitialization方法。
+    至此bean的初始化完成，对于单例的bean，spring的IOC容器会持有一份bean的实例对象；对于多例的bean，容器启动，加载配置文件之后并没有实例化bean，会在每次被调用的时候实例化一份bean对象。
+    容器关闭时，如果bean实现了DisposableBean接口，会调用destroy方法。
+    如果bean配置了destory-method，会调用该方法。至此整个bean生命周期结束。
+
+Bean的作用域
+
+    单例（singleton）：spring IOC容器内只会有一个bean的实例对象。用在无状态的bean。
+    多例（prototype）：每次被调用，就会创建一个该bean的实例对象。用在有状态bean。
+    Request：一次HTTP请求一个bean。
+    Session：一个HTTP session一个bean。
+    Global session：一个全局的HTTP Session一个bean。
+
+依赖注入的两种方式
+
+    构造器注入。通过<constructor-arg>注入。
+    Setter方法注入。通过<property>注入。
+
+AOP
+
+       AOP是指面向切面的编程，通过代理实现，代理实现的方式有两种：1.基于JDK的动态代理（必须实现了具体接口的类才能生成代理对象）；2.基于CGLIB的动态代理（没有实现接口的类也可以生成代理对象）。一个实际的AOP例子：要在每个数据库查找之前记录日志，如果没有AOP的话需要对每个Dao层中的数据查询都进行代码修改；而如果通过AOP，访问Dao层中的某个查询方法，访问的是一个代理方法，代理方法中实现了日志记录和数据查询。
+
+Spring处理线程安全问题
+
+       一般只有无状态的bean声明成单例，但spring中大部分的bean都声明成单例，这是通过ThreadLocal实现的线程级变量。ThreadLocal通过将有线程安全问题的变量在每个线程中保存一份变量，这样线程内的变量不需要变量同步，也就不存在线程安全问题。
+
+事务管理
+
+       事务是指对多个数据库操作统一的提交和回滚，如果这多个操作都成功，那么提交；如果中间出问题了就回滚，保证数据的一致性。Spring中声明式事务管理是通过AOP来实现的，也就是在需要事务管理的方法之前进行拦截，然后在目标方法开始之前创建并加入事务，执行完目标方法后根据执行情况提交或回滚事务。
+
+       事务的特性：原子性；一致性；持久性；隔离性。
+
+       Spring中事务管理的API：
+
+       Spring对事务的管理并不直接进行事务管理，对各个平台提供统一的接口，具体实现由具体平台框架实现，例如JDBC是由datasourceTransactionManager实现的。Spirng提供一个统一的事务管理接口platformTransactionManager，有三个方法getTransaction、commit和rollback；其中getTransaction传入参数是TransactionDefinition，这是一个事务属性定义类，包括事务传播级别，隔离级别，事务超时等；而getTransaction方法得到的返回值是TransactionStatus接口，提供一些查询数据状态等方法。
+
+事务的7种传播级别
+       事务的传播级别定义的是事务的控制范围。对一个类配置声明式事务，该类的所有public方法都会使用此事务，也就是说该方法的执行要嘛成功提交，要嘛回滚失败。
+
+    Request。默认的事务传播级别。如果有事务了就加入到此事务，如果没有则新建。
+    Supports。如果有事务了就加入到此事务，如果没有采用非事务执行。
+    Mandatory。强制。必须要有事务才能执行，没有就报错。
+    Require_now。每次都会新建一个事务，并且挂起上下文的事务，等这个执行完了再执行。
+    Not_supports。上下文存在事务则挂起，执行当前代码，执行完了接着执行事务。
+    Never。上下文不能存在事务，有就报错。
+    Nested。嵌套事务。上下文存在事务则嵌套子事务执行，不存在新建事务。
+
+数据隔离的4种级别
+
+       为了解决数据库并发事务出现脏读、不可重复读、幻读的问题。
+
+    Serializable。事务串行执行，性能开销大。
+    Repeatable read。保证一个事务不会修改另一个事务读取但未提交的数据，避免了不可重复读的情况（也就是解决不可重复读的问题是如果B在消费，“读”了账户余额，并还未提交，那么A就不能修改账户余额）。但可能有幻读的情况，幻读例子：A查询自己的消费记录，电脑上看到有10条记录，然后准备打印下来，结果打印下来有11条记录。
+    Read committed。大多数数据库的默认数据隔离等级。保证一个事务不会读到另一个事务已修改但未提交到数据，避免脏读的情况（也就是老板给员工转账，如果转账事务还未提交，那么员工是读不到账户余额信息的）。但可能会有不可重复读。不可重复读例子：账号里有2000，然后A和B都去消费，因为他们看到的都是2000，于是都去消费，结账的时候却提示余额不足。
+    Read uncommitted。保证读取的时候不会读到非法数据。有可能有脏读等情况。脏读例子：老板给员工转账5000，员工“读”到自己账号有5000，但是老板发现转错了应是2000，又回滚事务，修改成转账2000。这样员工读到的数据就是脏数据。
+
+Spring事务管理的两种方式
+
+    编程式事务管理。通常使用TransactionTemplete或PlatformTransactionManager，编程式事务管理回造成代码侵入，但更灵活。
+    声明式事务管理。基于AOP实现，有XML配置和注解@Transactional两种方式。对一个类配置声明式事务，该类的所有public方法都会使用此事务，也就是说该方法的执行要嘛成功提交，要嘛回滚失败。
+
+SpringMvc执行流程
+
+    用户发送请求至前端控制器DispatcherServlet
+    DispatcherServlet收到请求调用HandlerMapping处理器映射器。
+    处理器映射器根据请求url找到具体的handler处理器，返回给DispatcherServlet。
+    DispatcherServlet通过HandlerAdapter处理器适配器调用handler处理器
+    执行处理器(Controller是handler的一种)。
+    Controller执行完成返回ModelAndView
+    HandlerAdapter将controller执行结果ModelAndView返回给DispatcherServlet
+    DispatcherServlet将ModelAndView传给ViewReslover视图解析器
+    ViewReslover解析后返回具体View
+    DispatcherServlet对View进行渲染视图（即将模型数据填充至视图中）。
+    DispatcherServlet响应用户
+
+SpringMvc的参数绑定(从请求中接收参数)
+
+    默认类型：在controller方法中可以有也可以没有,看自己需求随意添加。包括request，response，session，Model
+    基本类型和String：double，float，integer，long，boolean，String
+    pojo类型：页面上input框的name属性值必须要等于pojo的属性名称
+    vo类型:页面上input框的name属性值必须要等于vo中的属性.属性.属性....
+    自定义转换器converter：作用:由于springMvc无法将string自动转换成date所以需要自己手动编写类型转换器。需要编写一个类实现Converter接口在springMvc.xml中配置自定义转换器，在springMvc.xml中将自定义转换器配置到注解驱动上
+
+Mybatis的优点
+
+       传统JDBC的数据库操作存在sql语句在代码中硬编码，不易维护扩展和创建连接对象，加载驱动等操作增加系统开销并降低开发效率这两个问题。Mybatis是对JDBC的封装，使得开发只需要专注sql本身，不需要花精力去处理驱动加载、创建连接对象等操作。
+
+Mybatis工作原理
+
+    Mybatis通过配置文件（sqlMapConfig核心配置文件和mapper文件）创建sqlSessionFactory对象。
+    sqlSessionFactory创建sqlSession对象，sqlSession对象包含了执行sql语句的方法，但真正执行数据库操作的是MappedStatement和Executor执行器。
+    Executor执行器。是mybatis底层实现的数据库操作接口，有基本执行器和缓存执行器两个实现类。
+    MappedStatement也是mybatis的底层封装。Mapper.xml中一个sql对应一个mappedStatement对象，sql的id就是mappedStatement的id，sql输入参数：Executor通过Mapped Statement在执行sql前将输入的java对象映射至sql中，输入参数映射就是jdbc编程中对preparedStatement设置参数；输出参数：Executor通过Mapped Statement在执行sql后将输出结果映射至java对象中，输出结果映射过程相当于jdbc编程中对结果的解析处理过程。
